@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         MAVEN_HOME = "C:/Program Files/Maven/apache-maven-3.9.9" // Replace with actual Maven path
-        PATH = "${MAVEN_HOME}/bin;${env.PATH}" // Add Maven to PATH for Windows
+        PATH = "${%MAVEN_HOME%}/bin;${env.PATH}" // Add Maven to PATH for Windows
         EMAIL_RECIPIENT = "ssgulluoglu@gmail.com" // Replace with actual recipient email
     }
 
