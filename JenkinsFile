@@ -2,114 +2,127 @@ pipeline {
     agent any
 
     environment {
-        MAVEN_HOME = "C:/Program Files/Maven/apache-maven-3.9.9" // Replace with actual Maven path
-        PATH = "${env.MAVEN_HOME}/bin;${env.PATH}" // Add Maven to PATH for Windows
-        EMAIL_RECIPIENT = "ssgulluoglu@gmail.com" // Replace with actual recipient email
+        SONAR_LOGIN = credentials('sonar-login')  // Ensure these credentials are correct
+        SONAR_PASSWORD = credentials('sonar-password')  // Ensure these credentials are correct
     }
 
     stages {
-        // Stage 1: Build the application
-        stage('Build') {
+        stage('Checkout SCM') {
             steps {
-                echo 'Building the application...'
-                // Correct bat command
-                bat "\"%MAVEN_HOME%\\bin\\mvn\" clean package"
+                checkout scm
             }
         }
 
-        // Stage 2: Run Unit and Integration Tests
+        stage('Build') {
+            steps {
+                echo 'Building the application...'
+                bat '"C:/Program Files/Maven/apache-maven-3.9.9/bin/mvn" clean package'
+            }
+        }
+
         stage('Unit and Integration Tests') {
             steps {
                 echo 'Running Unit and Integration Tests...'
-                // Correct bat command
-                bat "\"%MAVEN_HOME%\\bin\\mvn\" test"
+                bat '"C:/Program Files/Maven/apache-maven-3.9.9/bin/mvn" test'
             }
             post {
                 always {
                     junit '**/target/surefire-reports/*.xml'
-                }
-                success {
-                    emailext (
-                        to: "${env.EMAIL_RECIPIENT}",
-                        subject: "Jenkins Pipeline - Tests SUCCESS",
-                        body: "The Unit and Integration Tests completed successfully.",
-                        attachLog: true
-                    )
-                }
-                failure {
-                    emailext (
-                        to: "${env.EMAIL_RECIPIENT}",
-                        subject: "Jenkins Pipeline - Tests FAILURE",
-                        body: "The Unit and Integration Tests failed. Check the logs for details.",
-                        attachLog: true
+                    emailext(
+                        to: 'ssgulluoglu@gmail.com',
+                        subject: "Test Stage: Jenkins Pipeline Build ${currentBuild.fullDisplayName}",
+                        body: "Unit and Integration Tests completed. Check the build here: ${env.BUILD_URL}\n\nResult: ${currentBuild.result}"
                     )
                 }
             }
         }
 
-        // Stage 3: Code Analysis with SonarQube
-        stage('Code Analysis') {
+        stage('Code Analysis with SonarQube') {
             steps {
                 echo 'Running Code Analysis with SonarQube...'
-                // Correct bat command
-                withSonarQubeEnv('SonarQubeServer') {
-                    bat "\"%MAVEN_HOME%\\bin\\mvn\" sonar:sonar"
+                withSonarQubeEnv('SonarQubeServer') {  // Ensure the correct SonarQube server ID is used
+                    bat """
+                        "C:/Program Files/Maven/apache-maven-3.9.9/bin/mvn" sonar:sonar \
+                        -Dsonar.host.url=http://192.168.50.158:9000 \
+                        -Dsonar.login=$SONAR_LOGIN \
+                        -Dsonar.password=$SONAR_PASSWORD \
+                        -e -X  // Enable full debug logging in Maven
+                    """
                 }
-            }
-        }
-
-        // Stage 4: Security Scan using OWASP Dependency Check
-        stage('Security Scan') {
-            steps {
-                echo 'Running Security Scan with OWASP Dependency-Check...'
-                // Correct bat command
-                bat "\"%MAVEN_HOME%\\bin\\mvn\" org.owasp:dependency-check-maven:check"
             }
             post {
-                success {
-                    emailext (
-                        to: "${env.EMAIL_RECIPIENT}",
-                        subject: "Jenkins Pipeline - Security Scan SUCCESS",
-                        body: "The Security Scan completed successfully.",
-                        attachLog: true
-                    )
-                }
                 failure {
-                    emailext (
-                        to: "${env.EMAIL_RECIPIENT}",
-                        subject: "Jenkins Pipeline - Security Scan FAILURE",
-                        body: "The Security Scan failed. Check the logs for details.",
-                        attachLog: true
+                    echo 'SonarQube analysis failed. Please check credentials or SonarQube server.'
+                    emailext(
+                        to: 'ssgulluoglu@gmail.com',
+                        subject: "SonarQube Analysis Failed: Jenkins Pipeline Build ${currentBuild.fullDisplayName}",
+                        body: "SonarQube analysis failed. Check the build logs here: ${env.BUILD_URL}"
                     )
                 }
             }
         }
 
-        // Stage 5: Deploy to Staging (using AWS CLI or other deployment method)
-        stage('Deploy to Staging') {
+        stage('Security Scan') {
+            when {
+                expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
+            }
             steps {
-                echo 'Deploying to Staging Environment...'
-                // Correct bat command
-                bat "\"aws deploy --application-name my-app --deployment-group staging --s3-location s3://my-bucket/app.zip\""
+                echo 'Running Security Scan...'
+                // Add your security scan steps here (e.g., OWASP Dependency Check)
+            }
+            post {
+                always {
+                    emailext(
+                        to: 'ssgulluoglu@gmail.com',
+                        subject: "Security Scan Stage: Jenkins Pipeline Build ${currentBuild.fullDisplayName}",
+                        body: "Security scan completed. Check the build here: ${env.BUILD_URL}\n\nResult: ${currentBuild.result}"
+                    )
+                }
             }
         }
 
-        // Stage 6: Run Integration Tests on Staging
+        stage('Deploy to Staging') {
+            when {
+                expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
+            }
+            steps {
+                echo 'Deploying to Staging...'
+                // Add your deployment steps here
+            }
+        }
+
         stage('Integration Tests on Staging') {
+            when {
+                expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
+            }
             steps {
                 echo 'Running Integration Tests on Staging...'
-                // Correct bat command
-                bat "\"%MAVEN_HOME%\\bin\\mvn\" verify"
+                // Add your integration testing steps here
             }
         }
 
-        // Stage 7: Deploy to Production (using AWS CLI or other deployment method)
         stage('Deploy to Production') {
-            steps {
-                echo 'Deploying to Production Environment...'
-                // Correct bat command
-                bat "\"aws deploy --application-name my-app --deployment-group production --s3-location s3://my-bucket/app.zip\""
+            when {
+                expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
             }
+            steps {
+                echo 'Deploying to Production...'
+                // Add your production deployment steps here
+            }
+        }
+    }
+
+    post {
+        always {
+            emailext(
+                to: 'ssgulluoglu@gmail.com',
+                subject: "Jenkins Pipeline Build: ${currentBuild.fullDisplayName}",
+                body: "Check the status of the build here: ${env.BUILD_URL}\n\n${currentBuild.result}"
+            )
+        }
+
+        failure {
+            echo 'Build failed. Skipping deployment stages.'
         }
     }
 }
