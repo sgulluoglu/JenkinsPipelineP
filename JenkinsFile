@@ -52,7 +52,7 @@ pipeline {
             steps {
                 echo 'Running Code Analysis with SonarQube...'
                 // Correct bat command
-                withSonarQubeEnv('SonarQube') {
+                withSonarQubeEnv('sonarqube') {
                     bat "\"%MAVEN_HOME%\\bin\\mvn\" sonar:sonar"
                 }
             }
