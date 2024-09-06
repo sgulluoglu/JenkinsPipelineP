@@ -2,18 +2,17 @@ pipeline {
     agent any
 
     environment {
-        MAVEN_HOME = "C:/Program Files/Maven/apache-maven-3.9.9" // Replace with your actual Maven path
+        MAVEN_HOME = "C:/Program Files/Maven/apache-maven-3.9.9" // Replace with actual Maven path
         PATH = "${env.MAVEN_HOME}/bin;${env.PATH}" // Add Maven to PATH for Windows
         EMAIL_RECIPIENT = "ssgulluoglu@gmail.com" // Replace with actual recipient email
     }
 
     stages {
-
         // Stage 1: Build the application
         stage('Build') {
             steps {
                 echo 'Building the application...'
-                // Use %MAVEN_HOME% in the bat command for Windows
+                // Correct bat command
                 bat "\"%MAVEN_HOME%\\bin\\mvn\" clean package"
             }
         }
@@ -22,16 +21,14 @@ pipeline {
         stage('Unit and Integration Tests') {
             steps {
                 echo 'Running Unit and Integration Tests...'
-                // Run Maven test phase
+                // Correct bat command
                 bat "\"%MAVEN_HOME%\\bin\\mvn\" test"
             }
             post {
                 always {
-                    // Collect and display test results
                     junit '**/target/surefire-reports/*.xml'
                 }
                 success {
-                    // Send email on success
                     emailext (
                         to: "${env.EMAIL_RECIPIENT}",
                         subject: "Jenkins Pipeline - Tests SUCCESS",
@@ -40,7 +37,6 @@ pipeline {
                     )
                 }
                 failure {
-                    // Send email on failure
                     emailext (
                         to: "${env.EMAIL_RECIPIENT}",
                         subject: "Jenkins Pipeline - Tests FAILURE",
@@ -55,7 +51,7 @@ pipeline {
         stage('Code Analysis') {
             steps {
                 echo 'Running Code Analysis with SonarQube...'
-                // Run SonarQube analysis
+                // Correct bat command
                 withSonarQubeEnv('SonarQube') {
                     bat "\"%MAVEN_HOME%\\bin\\mvn\" sonar:sonar"
                 }
@@ -66,12 +62,11 @@ pipeline {
         stage('Security Scan') {
             steps {
                 echo 'Running Security Scan with OWASP Dependency-Check...'
-                // Run OWASP Dependency Check for vulnerabilities
+                // Correct bat command
                 bat "\"%MAVEN_HOME%\\bin\\mvn\" org.owasp:dependency-check-maven:check"
             }
             post {
                 success {
-                    // Send email on success
                     emailext (
                         to: "${env.EMAIL_RECIPIENT}",
                         subject: "Jenkins Pipeline - Security Scan SUCCESS",
@@ -80,9 +75,41 @@ pipeline {
                     )
                 }
                 failure {
-                    // Send email on failure
                     emailext (
                         to: "${env.EMAIL_RECIPIENT}",
                         subject: "Jenkins Pipeline - Security Scan FAILURE",
                         body: "The Security Scan failed. Check the logs for details.",
-                        att
+                        attachLog: true
+                    )
+                }
+            }
+        }
+
+        // Stage 5: Deploy to Staging (using AWS CLI or other deployment method)
+        stage('Deploy to Staging') {
+            steps {
+                echo 'Deploying to Staging Environment...'
+                // Correct bat command
+                bat "\"aws deploy --application-name my-app --deployment-group staging --s3-location s3://my-bucket/app.zip\""
+            }
+        }
+
+        // Stage 6: Run Integration Tests on Staging
+        stage('Integration Tests on Staging') {
+            steps {
+                echo 'Running Integration Tests on Staging...'
+                // Correct bat command
+                bat "\"%MAVEN_HOME%\\bin\\mvn\" verify"
+            }
+        }
+
+        // Stage 7: Deploy to Production (using AWS CLI or other deployment method)
+        stage('Deploy to Production') {
+            steps {
+                echo 'Deploying to Production Environment...'
+                // Correct bat command
+                bat "\"aws deploy --application-name my-app --deployment-group production --s3-location s3://my-bucket/app.zip\""
+            }
+        }
+    }
+}
