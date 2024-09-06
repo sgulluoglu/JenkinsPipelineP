@@ -2,8 +2,20 @@ pipeline {
     agent any
 
     environment {
-        SONAR_LOGIN = credentials('sonar-login')  // Ensure these credentials are correct
-        SONAR_PASSWORD = credentials('sonar-password')  // Ensure these credentials are correct
+        // SonarQube credentials
+        SONAR_LOGIN = credentials('sonar-login')  // SonarQube login (replace with actual credentials ID)
+        SONAR_PASSWORD = credentials('sonar-password')  // SonarQube password (replace with actual credentials ID)
+
+        // Environment variables overriding SonarQube properties
+        SONAR_WEB_SYSTEMPASSCODE = 'your-system-passcode'  // Example passcode, modify as needed
+
+        // Database configuration (example for PostgreSQL)
+        SONAR_JDBC_URL = 'jdbc:postgresql://localhost/sonarqube?currentSchema=my_schema'
+        SONAR_JDBC_USERNAME = 'sonarqube'
+        SONAR_JDBC_PASSWORD = 'sonarqube81'
+
+        // Web server configuration
+        SONAR_WEB_PORT = '9000'  // Example for setting the web port, customize as needed
     }
 
     stages {
@@ -40,13 +52,15 @@ pipeline {
         stage('Code Analysis with SonarQube') {
             steps {
                 echo 'Running Code Analysis with SonarQube...'
-                withSonarQubeEnv('SonarQubeServer') {  // Ensure the correct SonarQube server ID is used
+                withSonarQubeEnv('SonarQubeServer') {  // Use the actual name of your configured SonarQube server
                     bat """
                         "C:/Program Files/Maven/apache-maven-3.9.9/bin/mvn" sonar:sonar \
-                        -Dsonar.host.url=http://192.168.50.158:9000 \
+                        -Dsonar.host.url=http://192.168.50.158:${SONAR_WEB_PORT} \
+                        -Dsonar.jdbc.url=$SONAR_JDBC_URL \
+                        -Dsonar.jdbc.username=$SONAR_JDBC_USERNAME \
+                        -Dsonar.jdbc.password=$SONAR_JDBC_PASSWORD \
                         -Dsonar.login=$SONAR_LOGIN \
-                        -Dsonar.password=$SONAR_PASSWORD \
-                        -e -X  // Enable full debug logging in Maven
+                        -Dsonar.password=$SONAR_PASSWORD
                     """
                 }
             }
@@ -68,7 +82,7 @@ pipeline {
             }
             steps {
                 echo 'Running Security Scan...'
-                // Add your security scan steps here (e.g., OWASP Dependency Check)
+                // Security scan logic goes here
             }
             post {
                 always {
@@ -87,7 +101,7 @@ pipeline {
             }
             steps {
                 echo 'Deploying to Staging...'
-                // Add your deployment steps here
+                // Add deployment logic here
             }
         }
 
@@ -97,7 +111,7 @@ pipeline {
             }
             steps {
                 echo 'Running Integration Tests on Staging...'
-                // Add your integration testing steps here
+                // Add integration testing logic here
             }
         }
 
@@ -107,7 +121,7 @@ pipeline {
             }
             steps {
                 echo 'Deploying to Production...'
-                // Add your production deployment steps here
+                // Add production deployment logic here
             }
         }
     }
