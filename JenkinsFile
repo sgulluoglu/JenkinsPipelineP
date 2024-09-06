@@ -1,6 +1,12 @@
 pipeline {
     agent any
 
+    environment {
+        // Assuming you've set up credentials for SonarQube login
+        SONAR_LOGIN = credentials('sonar-login')
+        SONAR_PASSWORD = credentials('sonar-password')
+    }
+
     stages {
         stage('Checkout SCM') {
             steps {
@@ -23,6 +29,11 @@ pipeline {
             post {
                 always {
                     junit '**/target/surefire-reports/*.xml'
+                    emailext(
+                        to: 'ssgulluoglu@gmail.com',
+                        subject: "Test Stage: Jenkins Pipeline Build ${currentBuild.fullDisplayName}",
+                        body: "Unit and Integration Tests completed. Check the build here: ${env.BUILD_URL}\n\nResult: ${currentBuild.result}"
+                    )
                 }
             }
         }
@@ -30,8 +41,13 @@ pipeline {
         stage('Code Analysis with SonarQube') {
             steps {
                 echo 'Running Code Analysis with SonarQube...'
-                withSonarQubeEnv('YourSonarQubeServer') {
-                    bat '"C:/Program Files/Maven/apache-maven-3.9.9/bin/mvn" sonar:sonar -Dsonar.login=$SONAR_LOGIN -Dsonar.password=$SONAR_PASSWORD'
+                withSonarQubeEnv('SonarQubeServer') { // Update with the correct SonarQube server ID
+                    bat """
+                        "C:/Program Files/Maven/apache-maven-3.9.9/bin/mvn" sonar:sonar \
+                        -Dsonar.host.url=http://192.168.50.158:9000 \
+                        -Dsonar.login=$SONAR_LOGIN \
+                        -Dsonar.password=$SONAR_PASSWORD
+                    """
                 }
             }
             post {
@@ -48,6 +64,15 @@ pipeline {
             steps {
                 echo 'Running Security Scan...'
                 // Add your security scan steps here (e.g., OWASP Dependency Check)
+            }
+            post {
+                always {
+                    emailext(
+                        to: 'ssgulluoglu@gmail.com',
+                        subject: "Security Scan Stage: Jenkins Pipeline Build ${currentBuild.fullDisplayName}",
+                        body: "Security scan completed. Check the build here: ${env.BUILD_URL}\n\nResult: ${currentBuild.result}"
+                    )
+                }
             }
         }
 
