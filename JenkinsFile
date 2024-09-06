@@ -14,7 +14,7 @@ pipeline {
             steps {
                 echo 'Building the application...'
                 // Use %MAVEN_HOME% in the bat command for Windows
-                bat '"%MAVEN_HOME%\\bin\\mvn" clean package'
+                bat "\"%MAVEN_HOME%\\bin\\mvn\" clean package"
             }
         }
 
@@ -23,7 +23,7 @@ pipeline {
             steps {
                 echo 'Running Unit and Integration Tests...'
                 // Run Maven test phase
-                bat '"%MAVEN_HOME%\\bin\\mvn" test'
+                bat "\"%MAVEN_HOME%\\bin\\mvn\" test"
             }
             post {
                 always {
@@ -57,7 +57,7 @@ pipeline {
                 echo 'Running Code Analysis with SonarQube...'
                 // Run SonarQube analysis
                 withSonarQubeEnv('SonarQube') {
-                    bat '"%MAVEN_HOME%\\bin\\mvn" sonar:sonar'
+                    bat "\"%MAVEN_HOME%\\bin\\mvn\" sonar:sonar"
                 }
             }
         }
@@ -67,4 +67,22 @@ pipeline {
             steps {
                 echo 'Running Security Scan with OWASP Dependency-Check...'
                 // Run OWASP Dependency Check for vulnerabilities
-                bat '"%MAVEN_HOME%\\
+                bat "\"%MAVEN_HOME%\\bin\\mvn\" org.owasp:dependency-check-maven:check"
+            }
+            post {
+                success {
+                    // Send email on success
+                    emailext (
+                        to: "${env.EMAIL_RECIPIENT}",
+                        subject: "Jenkins Pipeline - Security Scan SUCCESS",
+                        body: "The Security Scan completed successfully.",
+                        attachLog: true
+                    )
+                }
+                failure {
+                    // Send email on failure
+                    emailext (
+                        to: "${env.EMAIL_RECIPIENT}",
+                        subject: "Jenkins Pipeline - Security Scan FAILURE",
+                        body: "The Security Scan failed. Check the logs for details.",
+                        att
